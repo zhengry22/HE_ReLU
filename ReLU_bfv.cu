@@ -1,7 +1,7 @@
 #pragma once
 #include "ReLU_bfv.h"
 #include <vector>
-
+#include <cmath>
 using namespace troy;
 using namespace std;
 
@@ -37,7 +37,7 @@ void poly_relu(const auto &encoder, const Evaluator &evaluator, const Ciphertext
 int main() {
 
     // These are the parameters used for encryption: ReLU(x_) and ReLU(y_)
-    uint64_t x_ = 0;
+    uint64_t x_ = -4;
 
     // Set the encryption scheme to be BFV
     EncryptionParameters parms(SchemeType::BFV);
@@ -94,8 +94,35 @@ int main() {
     std::string my_answer = decrypted_result.to_string();
     int int_value = std::stoi(my_answer, nullptr, 16);
 
+    
+
+    // std::optional<ContextDataPointer> context_data = context->key_context_data();
+    // if (context_data.has_value()) {
+    //     auto context_data_ptr = *context_data;
+
+    //     // 现在可以访问 context_data_ptr 所指向的内容
+    //     utils::ConstPointer<troy::Modulus> my_mod_ptr = context_data_ptr->parms().plain_modulus();
+    //     cout << *my_mod_ptr << endl;
+    //     if (my_mod_ptr.get() == nullptr) {
+    //         std::cerr << "plain_modulus() returned a null pointer!" << std::endl;
+    //         return;
+    //     }
+    //     else {
+    //         cout << 1 << endl;
+    //         troy::Modulus my_mod = *my_mod_ptr;
+    //     }
+        
+    // }
+    // else {
+    //     std::cerr << "optional does not contain a value" << std::endl;
+    // }
+
+
+    int_value = ((plain_modulus >> 1) > int_value) ? int_value : int_value - plain_modulus;
+
+    cout << int_value << " " << (float)int_value / (float)15 << endl;
     // 整数除以 15
-    int result = int_value / 15;
+    uint64_t result = std::lround((float)int_value / (float)15);
 
     // 输出结果
     std::cout << "Relu(x) = " << result << endl;
