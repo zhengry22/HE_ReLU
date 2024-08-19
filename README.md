@@ -8,3 +8,4 @@ For CSNOVA, 2024 summer, a program using the HE lib troy-nova to encrypt ReLU fu
 ## Some questions to think about
     * How to form the modular chain? According to the experiment we've conducted, I found that using 60 followed by a lot of 40s is effective for the fixed polynomial, but why? 
     * The polynomial fixed is ok when its deg reach 6, but what about the automated one? 
+    * update: turns out that I forgot to relinearize...... s**t...
