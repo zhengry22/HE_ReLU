@@ -8,6 +8,42 @@
 using namespace troy;
 using namespace std;
 
+double relu(double x) {
+    return x > 0 ? x : 0;
+}
+
+/*
+    Try to calculate the cipher with a fixed polynomial x^2 + 7x + 10
+*/ 
+void approx_with_fix(const CKKSEncoder &encoder, const Evaluator &evaluator, const RelinKeys &relin_keys, const double &scale,
+                    const Ciphertext &x_encrypted, Ciphertext &encrypted_result) {
+    
+
+    // prepare the plaintext for 2 and 5
+    Plaintext plain_2, plain_5;
+    encoder.encode_float64_single(2.0, std::nullopt, scale, plain_2);
+    encoder.encode_float64_single(5.0, std::nullopt, scale, plain_5);
+
+
+    // x + 2
+    Ciphertext x_plus_2 = x_encrypted;
+    evaluator.add_plain_inplace(x_plus_2, plain_2);
+    //evaluator.relinearize_inplace(x_plus_2, relin_keys);
+    //evaluator.rescale_to_next_inplace(x_plus_2);
+
+    // x + 5
+    Ciphertext x_plus_5 = x_encrypted;
+    evaluator.add_plain_inplace(x_plus_5, plain_5);
+    //evaluator.relinearize_inplace(x_plus_5, relin_keys);
+    //evaluator.rescale_to_next_inplace(x_plus_5);
+
+    evaluator.multiply_inplace(x_plus_2, x_plus_5);
+    evaluator.relinearize_inplace(x_plus_2, relin_keys);
+    evaluator.rescale_to_next_inplace(x_plus_2);
+    encrypted_result = x_plus_2;
+
+}
+
 int main() {
 
     EncryptionParameters parms(SchemeType::CKKS);
@@ -15,6 +51,7 @@ int main() {
     size_t poly_modulus_degree = 8192;
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::create(poly_modulus_degree, { 60, 40, 40, 60 }));
+    // Change this modulus chain if we need higher degree
 
     double scale = pow(2.0, 40);
 
@@ -41,72 +78,48 @@ int main() {
 
     vector<complex<double>> input;
     input.reserve(slot_count);
-    double curr_point = 0;
+    double curr_point = -2;
     //double step_size = 1.0 / (static_cast<double>(slot_count) - 1);
     double step_size = 0.25;
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < 16; i++)
     {
         input.push_back(curr_point);
         curr_point += step_size;
     }
     cout << "Input vector: " << endl;
-    print_vector(input, 10, 7);
+    print_vector(input, 16, 7);
 
-    cout << "Evaluating polynomial PI*x^3 + 0.4x + 1 ..." << endl;
+    cout << "Evaluating polynomial x^2 + 7x + 10 ..." << endl;
 
     /*
-    We create plaintexts for PI, 0.4, and 1 using an overload of CKKSEncoder::encode
-    that encodes the given floating-point value to every slot in the vector.
+        Try to calculate th
     */
-    Plaintext plain_coeff2, plain_coeff1, plain_coeff0;
-    encoder.encode_float64_single(3.0, std::nullopt, scale, plain_coeff2);
-    encoder.encode_float64_single(2.0, std::nullopt, scale, plain_coeff1);
-    encoder.encode_float64_single(1.0, std::nullopt, scale, plain_coeff0);
+
 
     Plaintext x_plain;
     print_line(__LINE__);
     cout << "Encode input vectors." << endl;
     encoder.encode_complex64_simd(input, std::nullopt, scale, x_plain);
-    Ciphertext x1_encrypted;
-    encryptor.encrypt_asymmetric(x_plain, x1_encrypted);
+    Ciphertext x_encrypted;
+    encryptor.encrypt_asymmetric(x_plain, x_encrypted);
+    Ciphertext encrypted_result;
+    approx_with_fix(encoder, evaluator, relin_keys, scale, x_encrypted, encrypted_result);
 
-    Ciphertext x3_encrypted;
-    print_line(__LINE__);
-    cout << "Compute x^2 and relinearize:" << endl;
-    evaluator.square(x1_encrypted, x3_encrypted);
-    evaluator.relinearize_inplace(x3_encrypted, relin_keys);
-    cout << "    + Scale of x^2 before rescale: " << log2(x3_encrypted.scale()) << " bits" << endl;
-
-    print_line(__LINE__);
-    cout << "Rescale x^2." << endl;
-    evaluator.rescale_to_next_inplace(x3_encrypted);
-    cout << "    + Scale of x^2 after rescale: " << log2(x3_encrypted.scale()) << " bits" << endl;
-
-
-    // Ensure the plain_coeff2 has the same parms_id as the rescaled x3_encrypted
-    Plaintext plain_coeff2_adjusted;
-    encoder.encode_float64_single(3.0, x3_encrypted.parms_id(), x3_encrypted.scale(), plain_coeff2_adjusted);
-
-    // Then multiply the rescaled ciphertext with the adjusted plaintext
-    Ciphertext x1_encrypted_coeff3;
-    evaluator.multiply_plain(x3_encrypted, plain_coeff2_adjusted, x1_encrypted_coeff3);
-
-    cout << "    + Scale of 3x^2 before rescale: " << log2(x1_encrypted_coeff3.scale()) << " bits" << endl;
-    evaluator.rescale_to_next_inplace(x1_encrypted_coeff3);
-    cout << "    + Scale of 3x^2 after rescale: " << log2(x1_encrypted_coeff3.scale()) << " bits" << endl;
-    print_line(__LINE__);
     /*
     Decrypt, decode, and print the result.
     */
     Plaintext plain_result;
-    decryptor.decrypt(x1_encrypted_coeff3, plain_result);
+    decryptor.decrypt(encrypted_result, plain_result);
     print_line(__LINE__);
     vector<complex<double>> result;
     encoder.decode_complex64_simd(plain_result, result);
     cout << "    + Computed result ...... Correct." << endl;
     cout << "    size of the result: " << result.size() << endl;
-    print_vector(result, 10, 7);
-
+    //print_vector(result, 16, 7);
+    for (int i = 0; i < 16; i++) {
+        cout << "Relu(x) / calc: " << relu(input[i].real()) << " " << result[i].real() / 15 << endl;
+    }
+    cout << endl;
     return 0;
 
 }
