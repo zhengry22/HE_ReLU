@@ -83,7 +83,6 @@ void horner(const auto &encoder, const Evaluator &evaluator, const RelinKeys &re
     Plaintext plain_coeff;
     double largest_coeff = poly.get_coeff_by_rank(poly_deg);
     //double largest_coeff = 1.0;
-    cout << "First coeff is: " << largest_coeff << endl;
     encoder.encode_float64_single(largest_coeff, std::nullopt, scale, plain_coeff);
     evaluator.multiply_plain_inplace(my_cipher, plain_coeff);
     evaluator.rescale_to_next_inplace(my_cipher); // a_n*x
@@ -139,7 +138,6 @@ int main() {
     parms.set_coeff_modulus(CoeffModulus::create(poly_modulus_degree, mod_chain));
     // Change this modulus chain if we need higher degree
 
-    cout << "Chain completed! " << endl;
 
     double scale = pow(2.0, 40);
 
@@ -149,7 +147,7 @@ int main() {
 
     CKKSEncoder encoder(context);
     size_t slot_count = encoder.slot_count();
-    cout << "Number of slots: " << slot_count << endl;
+    //cout << "Number of slots: " << slot_count << endl;
 
     context->to_device_inplace();
     encoder.to_device_inplace();
@@ -177,22 +175,18 @@ int main() {
     cout << "Input vector: " << endl;
     print_vector(input, 16, 7);
 
-    cout << "Evaluating polynomial (x + 2)(x + 5)(x + 1)(x + 1)..." << endl;
-
     /*
         Try to calculate th
     */
 
 
     Plaintext x_plain;
-    print_line(__LINE__);
     cout << "Encode input vectors." << endl;
     encoder.encode_complex64_simd(input, std::nullopt, scale, x_plain);
     Ciphertext x_encrypted;
     encryptor.encrypt_asymmetric(x_plain, x_encrypted);
     Ciphertext encrypted_result;
     //approx_with_fix(encoder, evaluator, relin_keys, scale, x_encrypted, encrypted_result);
-    cout << "In horner!" << endl;
     horner(encoder, evaluator, relin_keys, scale, poly, x_encrypted, encrypted_result);
 
     /*
@@ -200,12 +194,11 @@ int main() {
     */
     Plaintext plain_result;
     decryptor.decrypt(encrypted_result, plain_result);
-    print_line(__LINE__);
     vector<complex<double>> result;
     encoder.decode_complex64_simd(plain_result, result);
     //print_vector(result, 16, 7);
     for (int i = 0; i < 16; i++) {
-        cout << "Relu(x) / calc: " << relu(input[i].real()) << " " << result[i].real() << endl;
+        cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
     }
     cout << endl;
     return 0;
