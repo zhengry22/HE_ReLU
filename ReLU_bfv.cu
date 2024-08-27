@@ -1,9 +1,12 @@
 #pragma once
 #include "ReLU_bfv.h"
+#include "../Polynomial_Calc/polynomial.h"
+#include "../Polynomial_Calc/SiLU.h"
 #include <vector>
 #include <cmath>
 using namespace troy;
 using namespace std;
+#define MYDEBUG
 
 extern const size_t poly_modulus_degree;
 // extern const vector<Modulus> coeff_modulus;
@@ -34,10 +37,117 @@ void poly_relu(const auto &encoder, const Evaluator &evaluator, const Ciphertext
     evaluator.multiply(x_plus_two, x_plus_five, encrypted_result);
 } 
 
+void test_4degree_horner(const auto &encoder, const Evaluator &evaluator, const RelinKeys &relin_keys, const Ciphertext &x_encrypted, Ciphertext &encrypted_result) {
+    
+    /*
+        This function is used to test whether using 4 degree polynomial has a problem
+    */
+    cout << "Testing horner's method using a 4 degree polynomial: " << endl;
+    Plaintext zero;
+    Ciphertext my_cipher = x_encrypted; // x
+    encoder.encode_polynomial({0}, zero);
+
+    evaluator.multiply_plain_inplace(my_cipher, zero); // x * 0
+    evaluator.relinearize_inplace(my_cipher, relin_keys);
+    Plaintext this_pt;
+    encoder.encode_polynomial({1}, this_pt);
+    evaluator.add_plain_inplace(my_cipher, this_pt); // x * 0 + 1
+
+    Ciphertext mid;
+    evaluator.multiply(my_cipher, x_encrypted, mid); // 1 * x
+    evaluator.relinearize_inplace(mid, relin_keys); 
+    my_cipher = mid;
+
+    encoder.encode_polynomial({0}, this_pt); // 1 * x + 0
+    evaluator.add_plain_inplace(my_cipher, this_pt);
+
+    evaluator.multiply(my_cipher, x_encrypted, mid); // x^2
+    evaluator.relinearize_inplace(mid, relin_keys); 
+    my_cipher = mid;
+
+    evaluator.multiply(my_cipher, x_encrypted, mid); // x^2
+    evaluator.relinearize_inplace(mid, relin_keys); 
+    my_cipher = mid;
+
+    //     evaluator.multiply(my_cipher, x_encrypted, mid); // x^2
+    // evaluator.relinearize_inplace(mid, relin_keys); 
+    // my_cipher = mid;
+    // encoder.encode_polynomial({8181}, this_pt); // x*2 - 11
+    // evaluator.add_plain_inplace(my_cipher, this_pt);
+
+    // evaluator.multiply(my_cipher, x_encrypted, mid); // x^3 - 11x
+    // evaluator.relinearize_inplace(mid, relin_keys); 
+    // my_cipher = mid;
+
+    // encoder.encode_polynomial({8168}, this_pt); // x^3 - 11x - 24
+    // evaluator.add_plain_inplace(my_cipher, this_pt);
+
+    // evaluator.multiply(my_cipher, x_encrypted, mid); // x^4 - 11x^2 - 24x
+    // evaluator.relinearize_inplace(mid, relin_keys); 
+    // my_cipher = mid;
+
+    // encoder.encode_polynomial({0}, this_pt); // x^4 - 11x^2 - 24x
+    // evaluator.add_plain_inplace(my_cipher, this_pt);
+
+    encrypted_result = my_cipher;
+}
+
+void horner(const auto &encoder, const Evaluator &evaluator, const RelinKeys &relin_keys, const EncryptPolynomial &encpoly, const Ciphertext &x_encrypted, Ciphertext &encrypted_result) {
+    /*
+        This function has bug in it! or the way we decrypt!
+    */
+    
+    cout << "Using horners' method to calculate: " << endl;
+    
+    /*
+        In order to calculate the final result, we may use the linear horner's algorithm. 
+        Note that this is not likely the most efficient way, but is convenient for testing
+    */
+
+    cout << "Generate relinearization keys." << endl;
+
+    int deg = encpoly.poly.get_degree();
+    Plaintext zero;
+    Ciphertext my_cipher = x_encrypted;
+    encoder.encode_polynomial({0}, zero);
+    for (int i = deg; i >= 0; i--) {
+        // First multiple x and then add coeff[i]
+        if (i == deg) {
+            evaluator.multiply_plain_inplace(my_cipher, zero);
+            evaluator.relinearize_inplace(my_cipher, relin_keys);
+        }   
+        else {
+            Ciphertext mid;
+            evaluator.multiply(my_cipher, x_encrypted, mid);
+            evaluator.relinearize_inplace(mid, relin_keys);
+            my_cipher = mid;
+        }
+        uint64_t this_coeff = encpoly.poly.get_coeff_by_rank(i);
+        Plaintext this_pt;
+        encoder.encode_polynomial({this_coeff}, this_pt);
+        evaluator.add_plain_inplace(my_cipher, this_pt);
+    }
+
+    encrypted_result = my_cipher;
+}
+
+
 int main() {
+    int deg;
+    cout << "Input deg: " << endl;
+    cin >> deg;
+
+    // Generate the polynomial for approximation
+    Taylor<double, double> taylor(deg, silu);
+    Polynomial<double> poly = taylor.generate_approx(deg, 0);
+    poly.prune();
+    poly.check();
+    EncryptPolynomial encpoly = round_polynomial(poly);
+    encpoly.show();
+
 
     // These are the parameters used for encryption: ReLU(x_) and ReLU(y_)
-    uint64_t x_ = -4;
+    uint64_t x_ = 3;
 
     // Set the encryption scheme to be BFV
     EncryptionParameters parms(SchemeType::BFV);
@@ -83,46 +193,25 @@ int main() {
     */
     Ciphertext encrypted_result;
 
-    cout << "We are here" << endl;
-    poly_relu(encoder, evaluator, x_encrypted, encrypted_result);
-    // /*
-    //     Decrypt `encrypted result` and divide the result by 15
-    // */
+    // poly_relu(encoder, evaluator, x_encrypted, encrypted_result);
+
+    RelinKeys relin_keys = keygen.create_relin_keys(false);
+    //horner(encoder, evaluator, relin_keys, encpoly, x_encrypted, encrypted_result);
+    test_4degree_horner(encoder, evaluator, relin_keys, x_encrypted, encrypted_result);
+    /*
+        Decrypt `encrypted result` and divide the result by 15
+    */
 
     Plaintext decrypted_result;
     decryptor.decrypt(encrypted_result, decrypted_result);
     std::string my_answer = decrypted_result.to_string();
     int int_value = std::stoi(my_answer, nullptr, 16);
 
-    
+    //int_value = ((plain_modulus >> 1) > int_value) ? int_value : int_value - plain_modulus;
 
-    // std::optional<ContextDataPointer> context_data = context->key_context_data();
-    // if (context_data.has_value()) {
-    //     auto context_data_ptr = *context_data;
+    cout << int_value << " " << (double)int_value / (double)(encpoly.k) << endl;
 
-    //     // 现在可以访问 context_data_ptr 所指向的内容
-    //     utils::ConstPointer<troy::Modulus> my_mod_ptr = context_data_ptr->parms().plain_modulus();
-    //     cout << *my_mod_ptr << endl;
-    //     if (my_mod_ptr.get() == nullptr) {
-    //         std::cerr << "plain_modulus() returned a null pointer!" << std::endl;
-    //         return;
-    //     }
-    //     else {
-    //         cout << 1 << endl;
-    //         troy::Modulus my_mod = *my_mod_ptr;
-    //     }
-        
-    // }
-    // else {
-    //     std::cerr << "optional does not contain a value" << std::endl;
-    // }
-
-
-    int_value = ((plain_modulus >> 1) > int_value) ? int_value : int_value - plain_modulus;
-
-    cout << int_value << " " << (float)int_value / (float)15 << endl;
-    // 整数除以 15
-    uint64_t result = std::lround((float)int_value / (float)15);
+    long long result = std::lround((double)int_value / (double)(encpoly.k));
 
     // 输出结果
     std::cout << "Relu(x) = " << result << endl;

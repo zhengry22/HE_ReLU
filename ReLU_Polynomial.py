@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.polynomial import Polynomial
 
-coeffs = [0.0668, 0.5, 0.6579]
+coeffs = [0.0020541, 0, -0.0207295, 0, 0.249792, 0.5, 0]
 
 poly = np.poly1d(coeffs)
 
-my_range = 10
+my_range = 5
 
 # 生成样本数据
 def relu(x):

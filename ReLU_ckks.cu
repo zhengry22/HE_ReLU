@@ -128,7 +128,7 @@ int main() {
 
     EncryptionParameters parms(SchemeType::CKKS);
 
-    Taylor<double, double> taylor(deg, silu);
+    Remez<double, double> taylor(deg, silu);
     Polynomial<double> poly = taylor.generate_approx(deg, 0);
     poly.prune();
     poly.check();
@@ -164,16 +164,16 @@ int main() {
 
     vector<complex<double>> input;
     input.reserve(slot_count);
-    double curr_point = -2;
+    double curr_point = -5;
     //double step_size = 1.0 / (static_cast<double>(slot_count) - 1);
     double step_size = 0.25;
-    for (size_t i = 0; i < 16; i++)
+    for (size_t i = 0; i < 40; i++)
     {
         input.push_back(curr_point);
         curr_point += step_size;
     }
     cout << "Input vector: " << endl;
-    print_vector(input, 16, 7);
+    print_vector(input, 40, 7);
 
     /*
         Try to calculate th
@@ -197,7 +197,7 @@ int main() {
     vector<complex<double>> result;
     encoder.decode_complex64_simd(plain_result, result);
     //print_vector(result, 16, 7);
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 40; i++) {
         cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
     }
     cout << endl;
