@@ -128,8 +128,8 @@ int main() {
 
     EncryptionParameters parms(SchemeType::CKKS);
 
-    Remez<double, double> taylor(deg, silu);
-    Polynomial<double> poly = taylor.generate_approx(deg, 0);
+    Remez<double, double> my_p(deg, silu);
+    Polynomial<double> poly = my_p.generate_approx(deg, 0);
     poly.prune();
     poly.check();
 
