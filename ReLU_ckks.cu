@@ -4,13 +4,11 @@
 #include "../Polynomial_Calc/polynomial.h"
 #include "../Polynomial_Calc/SiLU.h"
 #include <iostream>
-
+#include <chrono>
+#include <ctime>
+#define BATCH_SIZE 40
 using namespace troy;
 using namespace std;
-
-double relu(double x) {
-    return x > 0 ? x : 0;
-}
 
 /*
     Try to calculate the cipher with a fixed polynomial 
@@ -128,7 +126,7 @@ int main() {
 
     EncryptionParameters parms(SchemeType::CKKS);
 
-    Remez<double, double> my_p(deg, silu);
+    Remez<double, double> my_p(deg, gelu_and_sqplus);
     Polynomial<double> poly = my_p.generate_approx(deg, 0);
     poly.prune();
     poly.check();
@@ -166,14 +164,14 @@ int main() {
     input.reserve(slot_count);
     double curr_point = -5;
     //double step_size = 1.0 / (static_cast<double>(slot_count) - 1);
-    double step_size = 0.25;
-    for (size_t i = 0; i < 40; i++)
+    double step_size = (double)10 / (double)BATCH_SIZE;
+    for (size_t i = 0; i < BATCH_SIZE; i++)
     {
         input.push_back(curr_point);
         curr_point += step_size;
     }
     cout << "Input vector: " << endl;
-    print_vector(input, 40, 7);
+    print_vector(input, BATCH_SIZE, 7);
 
     /*
         Try to calculate th
@@ -187,19 +185,25 @@ int main() {
     encryptor.encrypt_asymmetric(x_plain, x_encrypted);
     Ciphertext encrypted_result;
     //approx_with_fix(encoder, evaluator, relin_keys, scale, x_encrypted, encrypted_result);
+    auto start = std::chrono::high_resolution_clock::now();
     horner(encoder, evaluator, relin_keys, scale, poly, x_encrypted, encrypted_result);
-
+    
     /*
     Decrypt, decode, and print the result.
     */
     Plaintext plain_result;
     decryptor.decrypt(encrypted_result, plain_result);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     vector<complex<double>> result;
     encoder.decode_complex64_simd(plain_result, result);
     //print_vector(result, 16, 7);
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < BATCH_SIZE; i++) {
+        //cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "      SiLU(x): " << silu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
+        //cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "    abs(x): " << abs_test(input[i].real()) << "       计算结果：" << result[i].real() << endl;
         cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
     }
+    std::cout << "运行时间: " << (double)duration.count() / (double)1000 << " ms" << std::endl;
     cout << endl;
     return 0;
 
