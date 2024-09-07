@@ -110,7 +110,7 @@ void horner(const CKKSEncoder &encoder, const Evaluator &evaluator, const RelinK
 int main() {
 
     int deg;
-    cout << "Input deg: " << endl;
+    //cout << "Input deg: " << endl;
     cin >> deg;
 
     vector<size_t> mod_chain;
@@ -131,7 +131,7 @@ int main() {
     Remez<double, double> my_p(deg, gelu_and_sqplus);
     Polynomial<double> poly = my_p.generate_approx(deg, 0);
     poly.prune();
-    poly.check();
+    //poly.check();
 
     size_t poly_modulus_degree = 32768;
     parms.set_poly_modulus_degree(poly_modulus_degree);
@@ -142,8 +142,8 @@ int main() {
     double scale = pow(2.0, 40);
 
     auto context = HeContext::create(parms, true, SecurityLevel::Classical128);
-    print_parameters(*context);
-    cout << endl;
+    //print_parameters(*context);
+    //cout << endl;
 
     CKKSEncoder encoder(context);
     size_t slot_count = encoder.slot_count();
@@ -172,8 +172,8 @@ int main() {
         input.push_back(curr_point);
         curr_point += step_size;
     }
-    cout << "Input vector: " << endl;
-    print_vector(input, BATCH_SIZE, 7);
+    //cout << "Input vector: " << endl;
+    //print_vector(input, BATCH_SIZE, 7);
 
     /*
         Try to calculate th
@@ -181,7 +181,7 @@ int main() {
 
 
     Plaintext x_plain;
-    cout << "Encode input vectors." << endl;
+    //cout << "Encode input vectors." << endl;
     encoder.encode_complex64_simd(input, std::nullopt, scale, x_plain);
     Ciphertext x_encrypted;
     encryptor.encrypt_asymmetric(x_plain, x_encrypted);
@@ -200,13 +200,31 @@ int main() {
     vector<complex<double>> result;
     encoder.decode_complex64_simd(plain_result, result);
     //print_vector(result, 16, 7);
+
+    vector<double> x_axis, relu_val, actual_val;
     for (int i = 0; i < BATCH_SIZE; i++) {
         //cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "      SiLU(x): " << silu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
         //cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "    abs(x): " << abs_test(input[i].real()) << "       计算结果：" << result[i].real() << endl;
-        cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
+        //cout << "x: " << input[i].real() << "       Relu(x): " << relu(input[i].real()) << "       计算结果：" << result[i].real() << endl;
+        x_axis.push_back(input[i].real());
+        relu_val.push_back(relu(input[i].real()));
+        actual_val.push_back(result[i].real());
     }
     std::cout << "运行时间: " << (double)duration.count() / (double)1000 << " ms" << std::endl;
+
+    for (auto e: x_axis) {
+        cout << e << " ";
+    }
     cout << endl;
+
+    for (auto e: relu_val) {
+        cout << e << " ";
+    }
+    cout << endl;
+    
+    for (auto e: actual_val) {
+        cout << e << " ";
+    }
     return 0;
 
 }
