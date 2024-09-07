@@ -1,4 +1,3 @@
-#pragma once
 #include "ReLU_ckks.h"
 #include "../examples/examples.h"
 #include "../Polynomial_Calc/polynomial.h"
@@ -70,7 +69,7 @@ void approx_with_fix(const CKKSEncoder &encoder, const Evaluator &evaluator, con
 }
 
 
-void horner(const auto &encoder, const Evaluator &evaluator, const RelinKeys &relin_keys, const double &scale,
+void horner(const CKKSEncoder &encoder, const Evaluator &evaluator, const RelinKeys &relin_keys, const double &scale,
             const Polynomial<double> poly, const Ciphertext &x_encrypted, Ciphertext &encrypted_result) {
 
     /*
@@ -117,6 +116,9 @@ int main() {
     vector<size_t> mod_chain;
     for (int i = 0; i < deg + 2; i++) {
         if (i == 0) {
+            mod_chain.push_back(60);
+        }
+        else if (i == deg + 1) {
             mod_chain.push_back(60);
         }
         else {
