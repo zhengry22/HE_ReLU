@@ -5,9 +5,15 @@
 #include <iostream>
 #include <chrono>
 #include <ctime>
-#define BATCH_SIZE 40
+#define BATCH_SIZE 16384
 using namespace troy;
 using namespace std;
+
+void validate_input(int value) {
+    if (value < 1 || value > 13) {
+        throw std::invalid_argument("Input must be a positive integer between 1 and 13.");
+    }
+}
 
 /*
     Try to calculate the cipher with a fixed polynomial 
@@ -110,8 +116,24 @@ void horner(const CKKSEncoder &encoder, const Evaluator &evaluator, const RelinK
 int main() {
 
     int deg;
-    //cout << "Input deg: " << endl;
-    cin >> deg;
+    cout << "Input degree for polynomial: " << endl;
+    while (true) {
+        try {
+            std::cin >> deg;
+
+            if (std::cin.fail()) {  // Check for invalid input
+                std::cin.clear();  // Clear the error flag
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Discard invalid input
+                throw std::invalid_argument("Invalid input. Please enter an integer.");
+            }
+
+            validate_input(deg);
+            break;  // Exit the loop if input is valid
+
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Error: " << e.what() << " try again" << std::endl;
+        }
+    }
 
     vector<size_t> mod_chain;
     for (int i = 0; i < deg + 2; i++) {
