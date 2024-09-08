@@ -12,7 +12,7 @@ def main():
     print(hint)
     run_time_line = sys.stdin.readline().strip()
     run_time = float(run_time_line.split(":")[1].strip().replace(" ms", ""))
-
+    print(f"运行时间: {run_time} ms, 对 16384 个数进行计算，平均 {run_time * 1000 / 16384} us")
     # 读取 x, relu 和 actual 向量
     x = read_vector()  # Read the line after "x: "
     relu = read_vector()  # Read the line after "relu: "
