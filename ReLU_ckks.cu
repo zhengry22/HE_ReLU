@@ -6,6 +6,7 @@
 #include <chrono>
 #include <ctime>
 #define BATCH_SIZE 16384
+#define OUTPUT_MODE
 using namespace troy;
 using namespace std;
 
@@ -150,7 +151,7 @@ int main() {
 
     EncryptionParameters parms(SchemeType::CKKS);
 
-    Remez<double, double> my_p(deg, gelu_and_sqplus);
+    Remez<double, double> my_p(deg, relu);
     Polynomial<double> poly = my_p.generate_approx(deg, 0);
     poly.prune();
     //poly.check();
@@ -171,6 +172,7 @@ int main() {
     size_t slot_count = encoder.slot_count();
     //cout << "Number of slots: " << slot_count << endl;
 
+    // Move results on device
     context->to_device_inplace();
     encoder.to_device_inplace();
 
@@ -232,6 +234,8 @@ int main() {
         relu_val.push_back(relu(input[i].real()));
         actual_val.push_back(result[i].real());
     }
+
+#ifdef OUTPUT_MODE
     std::cout << "运行时间: " << (double)duration.count() / (double)1000 << " ms" << std::endl;
 
     for (auto e: x_axis) {
@@ -247,6 +251,7 @@ int main() {
     for (auto e: actual_val) {
         cout << e << " ";
     }
+#endif
     return 0;
 
 }
